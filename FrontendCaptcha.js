@@ -17,15 +17,14 @@ const operators = [
 ];
 
 function generateCaptcha() {
-  let num1 = Math.floor(1 + Math.random() * 9);
-  let num2 = Math.floor(1 + Math.random() * 9);
-  const op = operators[Math.floor(Math.random() * operators.length)];
+  let num1, num2, product;
+  do {
+    num1 = Math.floor(2 + Math.random() * 8);
+    num2 = Math.floor(2 + Math.random() * 8);
+    product = num1 * num2;
+  } while (product < 10 || product > 100);
 
-  if (op.symbol === "-") {
-    if (num1 < num2) [num1, num2] = [num2, num1];
-    if (num1 === num2) num1 += 1;
-  }
-
+  const op = operators.find((o) => o.symbol === "×");
   const isWordOnLeft = Math.random() < 0.5;
 
   const left = isWordOnLeft ? toPersianWord(num1) : toPersian(num1);
@@ -36,7 +35,7 @@ function generateCaptcha() {
   return { question, answer };
 }
 
-export default function FrontendCaptcha({ onValidate }) {
+export default function FrontendCaptcha({ onChange }) {
   const canvasRef = useRef(null);
   const [captcha, setCaptcha] = useState(generateCaptcha());
   const [input, setInput] = useState("");
@@ -44,12 +43,9 @@ export default function FrontendCaptcha({ onValidate }) {
   const drawCaptcha = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-
-    // Clear + background
     ctx.fillStyle = "#f7f7f7";
     ctx.fillRect(0, 0, 200, 60);
 
-    // Noise lines
     for (let i = 0; i < 4; i++) {
       ctx.strokeStyle = "#ccc";
       ctx.beginPath();
@@ -58,7 +54,6 @@ export default function FrontendCaptcha({ onValidate }) {
       ctx.stroke();
     }
 
-    // Text
     ctx.font = "bold 28px Tahoma";
     ctx.fillStyle = "#567c8d";
     ctx.textAlign = "center";
@@ -70,13 +65,15 @@ export default function FrontendCaptcha({ onValidate }) {
   }, [captcha]);
 
   useEffect(() => {
-    onValidate(input.trim() === captcha.answer);
-  }, [input, captcha.answer]);
-
-  const refresh = () => {
-    setCaptcha(generateCaptcha());
-    setInput("");
-  };
+    onChange({
+      input: input.trim(),
+      answer: captcha.answer,
+      refresh: () => {
+        setCaptcha(generateCaptcha());
+        setInput("");
+      },
+    });
+  }, [input, captcha]);
 
   return (
     <div style={{ marginTop: "10px", textAlign: "center", width: "100%" }}>
@@ -91,7 +88,7 @@ export default function FrontendCaptcha({ onValidate }) {
           type="text"
           placeholder="پاسخ"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value.replace(/\D/g, ""))}
           style={{
             flex: 1,
             padding: "8px",
@@ -101,7 +98,10 @@ export default function FrontendCaptcha({ onValidate }) {
           }}
         />
         <button
-          onClick={refresh}
+          onClick={() => {
+            setCaptcha(generateCaptcha());
+            setInput("");
+          }}
           type="button"
           title="تغییر تصویر"
           style={{
